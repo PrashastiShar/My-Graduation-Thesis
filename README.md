@@ -1,348 +1,342 @@
-# Low-Code Web UI Automation Testing Platform (Based on Playwright)
-
-> A form-based, no-code test authoring platform that lets manual QA testers create, run, and monitor Playwright UI automation tests — without writing a single line of Python.
-
-[![Python](https://img.shields.io/badge/Python-3.11-blue)]()
-[![Flask](https://img.shields.io/badge/Flask-Backend-black)]()
-[![Playwright](https://img.shields.io/badge/Playwright-Test%20Engine-green)]()
-[![Docker](https://img.shields.io/badge/Docker-Containerized-blue)]()
-[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-blue)]()
-
+Low-Code Web UI Automation Testing Platform (Based on Playwright)
+> A form-based test authoring platform that lets manual QA testers create, run and monitor
+> Playwright UI tests without writing Python, while producing plain, readable
+> Playwright + pytest scripts that automation engineers can take over.
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
+![Flask](https://img.shields.io/badge/Flask-3-black)
+![Playwright](https://img.shields.io/badge/Playwright-1.63-green)
+![Docker](https://img.shields.io/badge/Docker-containerized-blue)
+![CI](https://img.shields.io/badge/CI-GitHub%20Actions-blue)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+![Test case editor](docs/images/editor.png)
 ---
-
-## Table of Contents
-
-1. [Project Overview & Motivation](#1-project-overview--motivation)
-2. [Key Features](#2-key-features)
-3. [System Architecture](#3-system-architecture)
-4. [Tech Stack](#4-tech-stack)
-5. [Project Folder Structure](#5-project-folder-structure)
-6. [Prerequisites](#6-prerequisites)
-7. [Local Setup & Installation](#7-local-setup--installation)
-8. [How to Use the Platform](#8-how-to-use-the-platform)
-9. [CI/CD Workflow](#9-cicd-workflow)
-10. [Demo Results](#10-demo-results)
-11. [Project Limitations](#11-project-limitations)
-12. [Future Improvements](#12-future-improvements)
-13. [Academic Context](#13-academic-context)
-14. [License](#14-license)
-
+Table of contents
+Overview and motivation
+Key features
+System architecture
+Tech stack
+Project structure
+Quick start
+Configuration
+Using the platform
+CI/CD workflow
+Security model
+Testing the platform itself
+Evaluation
+Limitations
+Future work
+Academic context
+License
 ---
-
-## 1. Project Overview & Motivation
-
-In most software organizations, **manual QA testers are the people who best understand real business workflows** — they know exactly what a login flow, a checkout process, or a form submission is *supposed* to do. However, converting that knowledge into automated UI tests usually requires programming skills (Python/JavaScript) that manual testers often don't have.
-
-As a result, automated UI test creation and maintenance is bottlenecked by a small group of SDETs / automation engineers. Every new scenario a manual tester identifies has to be handed off, explained, and re-implemented by someone else — introducing delay, communication overhead, and a hard ceiling on how fast automated test coverage can grow.
-
-**This project is a bachelor's thesis prototype built to address that exact bottleneck.**
-
-The platform allows a manual tester to:
-- Define test steps (click element, input text, assert visible content) through a simple **web form** — no coding required.
-- Have the backend **automatically generate a standard, human-readable Playwright + pytest Python script** from that configuration.
-- Run the test in a **Docker container** for consistent, reproducible results.
-- Get an **HTML report** with **automatic failure screenshots**.
-- Have tests **automatically re-run in the cloud** (GitHub Actions) on every code push, with results persisted to **Aliyun OSS**.
-
-The goal is not to replace SDETs, but to **shift routine test authoring left**, toward the people who already understand what needs to be tested — while still producing plain, standard Playwright/pytest scripts that any automation engineer can read, extend, or take ownership of.
-
-This project was completed as an undergraduate Computer Science bachelor's thesis, and is explicitly scoped as a **functional prototype**, not enterprise production software (see [Limitations](#11-project-limitations)).
-
----
-
-## 2. Key Features
-
-| # | Feature | Description |
-|---|---|---|
-| 1 | **Low-code test configuration** | Web form UI to define test steps: click element, input text, assert visible content — no Python required. |
-| 2 | **Dynamic script generation** | Template-driven engine that converts a JSON test configuration into a valid, executable Playwright + pytest Python script. |
-| 3 | **Containerized execution** | Tests run inside a Docker container pre-configured with Playwright, browsers, and dependencies for consistent results across machines. |
-| 4 | **Automatic failure screenshots** | On any failed step, a screenshot of the page state is captured automatically via `pytest-playwright`. |
-| 5 | **HTML test reports** | Self-contained HTML reports generated via `pytest-html`, summarizing per-step pass/fail results. |
-| 6 | **Cloud CI integration** | GitHub Actions workflow automatically builds the Docker image and re-runs tests on every push to the repository. |
-| 7 | **Cloud artifact storage** | Test reports and failure screenshots are uploaded to Aliyun OSS, so they remain accessible after the CI runner/container is discarded. |
-| 8 | **Lightweight metadata storage** | SQLite database stores test cases, test steps, and execution history (report/screenshot references only — not the files themselves). |
-
----
-
-## 3. System Architecture
-
-The platform is organized into five cooperating modules:
-
+1. Overview and motivation
+Manual QA testers usually understand business workflows best: what a login, a checkout
+or a form submission is supposed to do. Turning that knowledge into automated UI tests
+normally needs programming skills, so test automation becomes a bottleneck owned by a
+small group of SDETs. Every scenario a tester finds has to be handed over, explained and
+re-implemented by someone else.
+This bachelor's thesis prototype lets a tester:
+define test steps in a web form (navigate, click, type, choose from dropdowns,
+tick checkboxes, press keys, and assert text, visibility, URL and title);
+have the backend generate a standard Playwright + pytest script, checked for safety
+before it runs;
+run it in an isolated Docker container for reproducible results;
+see per-step results, a screenshot of the failing step and a Playwright trace
+that replays the whole run;
+export the test so GitHub Actions runs it on every push, every night, or after each
+deployment of the application under test, with results stored in Aliyun OSS and
+visible back in the platform.
+The goal is not to replace SDETs but to shift routine test authoring towards the people who
+know what to test, while the output stays plain pytest code an engineer can read, extend
+and own. The project is a functional prototype, not production software
+(see Limitations).
+2. Key features
+Feature	Description
+Form-based test editor	12 actions (go to URL, click, input text, press key, select option, check/uncheck, assert visible/hidden/text/URL/title), reorderable steps, live preview of the generated script.
+Robust element locators	Role + accessible name (Playwright's recommended strategy), label, placeholder, visible text, `data-testid`, or CSS selector.
+Auto-waiting assertions	Generated tests use Playwright's `expect(...)` assertions, which retry until the page is ready, instead of fixed sleeps.
+Safe script generation	Three layers: strict validation, every user value emitted as a Python string literal, and an AST allow-list check of the generated code. See Security model.
+Secrets as variables	Write `${DEMO_PASSWORD}` in a step; the value comes from `.env` or GitHub secrets at run time and never appears in the database, the script or the report.
+Background execution	Runs go to a worker pool. The UI gets a run id at once and polls the status, so the web server never blocks during a browser test.
+Hardened Docker runs	Non-root, no Linux capabilities, read-only filesystem, memory/CPU/process limits, timeout, container removed afterwards.
+Per-step diagnostics	Status and duration of every step, the error message, a full-page screenshot of the failed step, and a Playwright trace (DOM snapshots, network, console) on failure.
+HTML and JUnit reports	`pytest-html` self-contained report with the failure screenshot embedded, plus `junit.xml` for other tools.
+CI integration	Test cases exported as JSON to `test_cases/` run in GitHub Actions on push, pull request, a nightly schedule, manual dispatch or a deployment webhook.
+Cloud storage with private access	Reports, screenshots and traces go to Aliyun OSS; the platform hands out short-lived signed links, so the bucket stays private.
+CI results in the platform	Each run writes a `run.json` manifest; "Sync CI runs" imports CI results into the platform's history.
+Bundled demo application	A small demo shop at `/demo/` serves as the system under test, so tests and CI need no external website.
+3. System architecture
 ```
-                         ┌───────────────────────────┐
-                         │  Frontend Configuration    │
-                         │  Module (HTML/JS Form)     │
-                         └─────────────┬─────────────┘
-                                       │ REST API (JSON)
-                                       ▼
-                         ┌───────────────────────────┐
-                         │   Flask Backend            │
-                         │  ┌───────────────────────┐ │
-                         │  │ Script Generation      │ │
-                         │  │ Module (templates)     │ │
-                         │  └───────────┬───────────┘ │
-                         └──────────────┼─────────────┘
-                                        ▼
-                         ┌───────────────────────────┐        ┌──────────────────────┐
-   Code Push ──────────▶ │  GitHub Actions (Cloud CI) │──────▶ │  Test Execution        │
-                         │  Module                    │        │  Module (Docker +      │
-                         └───────────────────────────┘        │  Playwright + pytest)  │
-                                                                └──────────┬─────────────┘
-                                                                           ▼
-                                                                ┌──────────────────────┐
-                                                                │ Report & Screenshot   │
-                                                                │ Storage Module        │
-                                                                │ (HTML report gen +    │
-                                                                │ Aliyun OSS upload)    │
-                                                                └──────────────────────┘
+                 ┌──────────────────────────────┐
+  Tester ──────▶ │ Frontend (HTML + vanilla JS) │
+                 └──────────────┬───────────────┘
+                                │ REST / JSON
+                 ┌──────────────▼───────────────────────────────────────────┐
+                 │ Flask backend                                             │
+                 │  validation ─▶ script generator ─▶ AST allow-list check   │
+                 │  SQLite (cases, steps, runs, step results)                │
+                 │  run service (thread pool) ─▶ test runner                 │
+                 └──────┬──────────────────────────────┬────────────────────┘
+                        │ docker run (hardened)         │ "Export for CI"
+                        ▼                               ▼
+          ┌──────────────────────────┐        test_cases/*.json ──git push──┐
+          │ Test container           │                                      │
+          │ pytest + Playwright      │                                      ▼
+          │ screenshots · trace ·    │        ┌───────────────────────────────────┐
+          │ report · steps.json      │        │ GitHub Actions                     │
+          └────────────┬─────────────┘        │ unit tests ─▶ build image ─▶       │
+                       │                      │ run test_cases/ in the container   │
+                       ▼                      └───────────────┬───────────────────┘
+          ┌──────────────────────────┐                        │
+          │ Storage: local disk or   │◀───────────────────────┘
+          │ Aliyun OSS               │   artifacts + run.json manifest
+          │ runs/<id>/run.json …     │
+          └────────────┬─────────────┘
+                       │ "Sync CI runs" reads manifests
+                       ▼
+                 back into SQLite → visible in the UI
 ```
-
-- **Frontend Configuration Module** — form-based UI for defining/saving test cases.
-- **Script Generation Module** — maps each step (click / input / assert_visible) to a Playwright code template and assembles a full pytest script.
-- **Test Execution Module** — runs the generated script inside a Docker container using pytest + `pytest-playwright`.
-- **Report & Screenshot Storage Module** — generates the HTML report, captures failure screenshots, uploads both to Aliyun OSS, and records references in SQLite.
-- **Cloud CI Module** — GitHub Actions workflow that rebuilds the Docker image and re-runs tests automatically on every push.
-
-> `[Insert architecture diagram image - thesis Figure 3.1]`
-
----
-
-## 4. Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Backend | Python 3.11, Flask |
-| Database | SQLite (lightweight metadata storage) |
-| Frontend | HTML + vanilla JavaScript (no React, no Node.js) |
-| Test Engine | Playwright (Python), pytest, `pytest-playwright`, `pytest-html` |
-| Containerization | Docker |
-| CI/CD | GitHub Actions |
-| Cloud Storage | Aliyun OSS (Object Storage Service) |
-| Version Control | Git / GitHub |
-
----
-
-## 5. Project Folder Structure
-
+Module	Code	Responsibility
+Frontend configuration	`frontend/`	Editor for test cases and steps, run history, step-level results.
+Validation	`backend/validation.py`	Schema, whitelisted actions/strategies/roles, length limits, reserved variables.
+Script generation	`backend/services/script_generator.py`, `backend/templates/test_script.py.j2`	Maps each step to Playwright code, renders the pytest file, checks it.
+Test execution	`backend/services/test_runner.py`, `backend/runner_support/conftest.py`	Prepares the run folder, runs pytest in Docker or locally, collects results.
+Background runs	`backend/services/run_service.py`	Thread pool, run status lifecycle (`queued → running → passed/failed/error`).
+Report storage	`backend/services/storage.py`	Local disk or Aliyun OSS, signed URLs, run manifests.
+CI integration	`.github/workflows/ci.yml`, `backend/cli.py`, `backend/services/ci_sync.py`	Runs exported cases in CI and imports the results.
+4. Tech stack
+Layer	Technology
+Backend	Python 3.11+, Flask 3
+Database	SQLite (metadata only; files live in storage)
+Frontend	HTML + vanilla JavaScript, no build step
+Test engine	Playwright for Python (sync API), pytest, pytest-html
+Script templating	Jinja2
+Containerization	Docker (`mcr.microsoft.com/playwright/python` base image)
+CI/CD	GitHub Actions
+Cloud storage	Aliyun OSS (`oss2` SDK)
+5. Project structure
 ```
 low-code-ui-testing-platform/
 ├── backend/
-│   ├── app.py                     # Flask application entry point
-│   ├── routes/                    # API route definitions
+│   ├── app.py                    # Flask app factory and entry point
+│   ├── cli.py                    # init-db, import/export, generate, run (used by CI), sync-ci
+│   ├── config.py                 # all settings, from environment variables / .env
+│   ├── db.py                     # SQLite schema and connections
+│   ├── repository.py             # data access for cases, steps, runs, step results
+│   ├── validation.py             # test-case schema and rules
+│   ├── routes/api.py             # REST API
 │   ├── services/
-│   │   ├── script_generator.py    # Template-driven Playwright/pytest script generation
-│   │   ├── test_runner.py         # Docker/pytest execution logic
-│   │   └── oss_uploader.py        # Aliyun OSS upload logic
-│   ├── models/                    # SQLite models (test_case, test_step, test_run, failure_screenshot)
-│   └── templates/
-│       └── script_template.py.j2  # Base Playwright/pytest script template
-│
-├── frontend/
-│   ├── index.html                 # Test-step configuration form
-│   ├── js/
-│   │   └── main.js
-│   └── css/
-│       └── style.css
-│
-├── generated_tests/                # Auto-generated Playwright/pytest scripts (runtime output)
-│
-├── docker/
-│   └── Dockerfile                  # Test execution environment image
-│
-├── .github/
-│   └── workflows/
-│       └── run-tests.yml           # GitHub Actions CI workflow
-│
-├── reports/                        # Locally generated HTML reports & screenshots (runtime output)
-│
+│   │   ├── script_generator.py   # config → checked Playwright/pytest script
+│   │   ├── test_runner.py        # executes one run (docker or local)
+│   │   ├── run_service.py        # background thread pool
+│   │   ├── storage.py            # local disk / Aliyun OSS, manifests, signed URLs
+│   │   └── ci_sync.py            # imports CI run manifests
+│   ├── templates/test_script.py.j2
+│   └── runner_support/conftest.py  # page + step fixtures, screenshots, traces
+├── demo_app/                     # demo shop served at /demo/ (system under test)
+├── frontend/                     # index.html, js/main.js, css/style.css
+├── test_cases/                   # exported test cases (JSON) that CI runs
+├── tests/                        # unit, API and end-to-end tests of the platform
+├── evaluation/                   # benchmark script, external scenarios, study protocol
+├── docs/                         # screenshots, thesis change notes
+├── docker/Dockerfile
+├── .github/workflows/ci.yml
 ├── requirements.txt
-├── .env.example                    # Example environment variable file (no real secrets)
-├── README.md
+├── .env.example
 └── LICENSE
 ```
-
----
-
-## 6. Prerequisites
-
-Before setting up the project locally, make sure you have:
-
-- **Python** 3.11+
-- **pip** (Python package manager)
-- **Docker** (Docker Engine / Docker Desktop)
-- **Git**
-- An **Aliyun OSS** account with a bucket created, plus an Access Key ID and Access Key Secret (only required if you want to test cloud storage upload)
-- (Optional) A **GitHub repository** with Actions enabled, if you want to test the cloud CI pipeline
-
----
-
-## 7. Local Setup & Installation
-
+Created at run time (ignored by Git): `data/platform.db`, `runs/<run_id>/`, `evaluation/results/`.
+6. Quick start
+Prerequisites: Python 3.11+, Git, and Docker (for the default isolated executor).
 ```bash
-# 1. Clone the repository
 git clone https://github.com/<your-username>/low-code-ui-testing-platform.git
 cd low-code-ui-testing-platform
 
-# 2. Create and activate a virtual environment
 python -m venv venv
-source venv/bin/activate        # On Windows: venv\Scripts\activate
-
-# 3. Install backend dependencies
+source venv/bin/activate            # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-
-# 4. Install Playwright browser binaries
 playwright install --with-deps chromium
 
-# 5. Configure environment variables
-cp .env.example .env
-# Then edit .env and fill in your own values (see below)
+cp .env.example .env                # then edit .env (see Configuration)
+
+python -m backend.cli init-db
+python -m backend.cli import test_cases/     # load the three sample test cases
 ```
-
-### Environment Variables
-
-> ⚠️ **Security Warning:** Never hard-code Aliyun OSS credentials (Access Key ID / Secret) or any other secrets directly in source code or commit them to Git. Always load them from environment variables or a `.env` file that is excluded via `.gitignore`. For GitHub Actions, store them as **encrypted repository secrets**, not as plain text in the workflow YAML.
-
-`.env.example`:
-
-```env
-FLASK_ENV=development
-SECRET_KEY=change-me
-
-# Aliyun OSS configuration — DO NOT hard-code real values, use environment variables only
-OSS_ACCESS_KEY_ID=your-access-key-id
-OSS_ACCESS_KEY_SECRET=your-access-key-secret
-OSS_ENDPOINT=your-oss-endpoint
-OSS_BUCKET_NAME=your-bucket-name
-```
-
+Option A, isolated execution (default, `EXECUTOR=docker`):
 ```bash
-# 6. Initialize the SQLite database
-python backend/init_db.py
-
-# 7. Build the Docker test execution image
 docker build -t ui-test-runner -f docker/Dockerfile .
-
-# 8. Run the Flask backend
-python backend/app.py
-
-# 9. Open the frontend
-# Navigate to http://localhost:5000 in your browser
+HOST=0.0.0.0 API_TOKEN=pick-a-token python -m backend.app
 ```
-
----
-
-## 8. How to Use the Platform
-
-1. **Open the web interface** at `http://localhost:5000`.
-2. **Create a new test case** and give it a descriptive name (e.g., `Login_Success_Test`).
-3. **Add test steps** using the form editor. For each step, choose an action type:
-   - `Click` — specify the target element selector.
-   - `Input Text` — specify the selector and the text value to enter.
-   - `Assert Visible Content` — specify the selector (or page scope) and the expected visible text.
-4. **Reorder or remove steps** as needed, then **save** the test case.
-5. Click **Run Test** to trigger execution:
-   - The backend generates the corresponding Playwright/pytest script.
-   - The script runs inside the Docker test execution container.
-   - On any failed step, a screenshot is captured automatically.
-6. **View the results**: the platform displays the overall pass/fail status and a link to the generated HTML report (with embedded failure screenshots, if any).
-7. **Push code** to the connected GitHub repository to trigger the same test suite automatically in the cloud (see [CI/CD Workflow](#9-cicd-workflow)) — reports and screenshots from CI runs are also viewable from the platform.
-
-> `[Insert screenshot here — test step configuration form]`
-> `[Insert screenshot here — test run result summary]`
-
----
-
-## 9. CI/CD Workflow
-
-The platform integrates GitHub Actions as a cloud CI layer, so that tests are continuously verified without manual triggering.
-
-**Trigger:** Every `git push` to the `main` branch.
-
-**Pipeline steps** (`.github/workflows/run-tests.yml`):
-
-1. **Checkout** the repository code.
-2. **Build the Docker test execution image**, using the same `Dockerfile` used for local execution — guaranteeing identical behavior between local and cloud runs.
-3. **Run the generated Playwright/pytest test scripts** inside the container, using `pytest-playwright` (for browser automation and screenshot-on-failure) and `pytest-html` (for report generation).
-4. **Upload results to Aliyun OSS** — the generated HTML report and any failure screenshots are pushed to a dedicated OSS bucket using the Aliyun OSS Python SDK.
-5. **Record execution metadata** so results are viewable from the platform's UI, alongside locally triggered runs.
-
-Aliyun OSS credentials used in this step are read from **GitHub Actions encrypted secrets** (`Settings → Secrets and variables → Actions`), never from the workflow file itself.
-
-```yaml
-env:
-  OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
-  OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+Tests run in containers, where `localhost` means the container itself. The runner
+therefore rewrites `localhost` in the base URL to `host.docker.internal`, and the platform
+must listen on `0.0.0.0` so the container can reach the bundled demo app. Set an
+`API_TOKEN` when you do that (the UI asks for it once).
+Option B, quick local execution (`EXECUTOR=local`):
+```bash
+EXECUTOR=local python -m backend.app
 ```
-
-> `[Insert screenshot here — GitHub Actions workflow run log]`
-> `[Insert screenshot here — Aliyun OSS bucket showing uploaded reports/screenshots]`
-
----
-
-## 10. Demo Results
-
-> `[Insert screenshot here — sample generated Playwright/pytest script]`
-
-> `[Insert screenshot here — HTML test report, passing scenario]`
-
-> `[Insert screenshot here — HTML test report with failure screenshot embedded]`
-
-> `[Insert screenshot here — end-to-end login test scenario walkthrough]`
-
----
-
-## 11. Project Limitations
-
-This is an **undergraduate bachelor's thesis prototype**, not enterprise-grade production software. The following limitations are known and intentional given the project's academic scope:
-
-- **Limited action coverage** — only three basic actions are supported: click, input text, and assert visible content. Dropdowns, file uploads, drag-and-drop, keyboard events, and multi-tab scenarios are not yet supported.
-- **Manual selector input** — testers must supply valid element selectors (CSS selector / ID / text) themselves; there is no visual "point-and-click" element picker.
-- **No conditional logic or data-driven testing** — test cases execute as a fixed, linear sequence of steps; branching and parameterized (data-driven) testing are not supported.
-- **No user authentication or permission system** — all users currently share equal, unrestricted access to test cases, execution, and stored reports.
-- **Input escaping, not security hardening** — user-supplied selectors/values are escaped only to preserve script syntax validity; this is **not** a security mechanism and has not been evaluated against adversarial or malicious input (e.g., code injection).
-- **Single-application evaluation scope** — functional testing (see thesis Chapter 5) was performed against one sample application; broader validation across varied, real-world, dynamic web applications was not performed.
-
----
-
-## 12. Future Improvements
-
-Planned directions for extending this prototype beyond its current bachelor-thesis scope:
-
-- **Advanced element recognition** — a visual "point-and-click" element picker to reduce reliance on manually supplied selectors, plus more resilient selector strategies.
-- **Expanded action library** — support for dropdowns, checkboxes/radio buttons, file uploads, keyboard events, waits, and multi-tab/window handling.
-- **Batch execution & task scheduling** — running multiple test cases as a suite, and scheduled/periodic execution (e.g., nightly regression) independent of code pushes.
-- **User permission & role management** — authentication and role-based access control (e.g., tester / SDET / admin roles).
-- **Data-driven and conditional testing** — parameterized test cases and basic conditional branching for optional/environment-dependent elements.
-- **Enhanced reporting & analytics** — historical pass/fail trend views, and richer failure diagnostics (console logs, network failures) alongside screenshots.
-- **Broader real-world validation** — testing against a wider variety of production-like web applications to assess robustness and generalizability.
-
----
-
-## 13. Academic Context
-
-This repository contains the implementation accompanying an undergraduate Computer Science **Bachelor's Degree Thesis**:
-
+Tests run as a pytest subprocess on your machine: no Docker needed, less isolation.
+Then open http://localhost:5000, select Login_Success_Test and click Run test.
+Run the platform's own tests with `pytest`.
+7. Configuration
+All settings are environment variables, read from `.env` if present. See `.env.example`.
+Variable	Default	Purpose
+`HOST`, `PORT`	`127.0.0.1`, `5000`	Where the web server listens.
+`API_TOKEN`	empty	When set, every change needs the `X-API-Token` header.
+`EXECUTOR`	`docker`	`docker` (isolated) or `local`.
+`DOCKER_IMAGE`	`ui-test-runner`	Image used per run.
+`RUN_TIMEOUT_SECONDS`	`300`	Whole-run timeout; the container is killed after it.
+`STEP_TIMEOUT_MS`	`10000`	How long each step waits for its element.
+`MAX_PARALLEL_RUNS`	`2`	Size of the worker pool.
+`TRACE_MODE`	`retain-on-failure`	`on`, `off` or `retain-on-failure`.
+`STORAGE_BACKEND`	`local`	`local` or `oss`.
+`OSS_ACCESS_KEY_ID`, `OSS_ACCESS_KEY_SECRET`, `OSS_ENDPOINT`, `OSS_BUCKET_NAME`	—	Aliyun OSS access (required for `oss`).
+`OSS_PREFIX`	`ui-tests/`	Folder inside the bucket.
+`OSS_URL_EXPIRY_SECONDS`	`3600`	Lifetime of signed links.
+`DEMO_USERNAME`, `DEMO_PASSWORD`	`demo`, `demo-pass`	Demo app credentials, also used as test variables.
+> ⚠️ **Never commit credentials.** `.env` is in `.gitignore`. In GitHub Actions, store OSS keys
+> and test passwords as encrypted repository secrets
+> (*Settings → Secrets and variables → Actions*).
+Aliyun OSS notes. Keep the bucket private: the platform signs a temporary link for
+each report or screenshot. A RAM user with permission only for this bucket
+(`oss:PutObject`, `oss:GetObject`, `oss:ListObjects`) is safer than the account's main key.
+OSS makes browsers download HTML files opened through its default domain rather than
+display them; to view reports in the browser, bind a custom domain to the bucket, or
+download the report and open it locally.
+8. Using the platform
+Create a test case: click + New test case, enter a name (e.g. `Login_Success_Test`)
+and the base URL of the application under test.
+Add steps. For each step pick an action, then the element and a value where needed:
+Action	Element	Value	Generated code (example)
+Go to URL	—	`/demo/` or full URL	`page.goto(url('/demo/'))`
+Click	yes	—	`page.get_by_role('button', name='Log in').click()`
+Input text	yes	text or `${VAR}`	`page.get_by_label('Password').fill(resolve('${DEMO_PASSWORD}'))`
+Press key	yes	`Enter`, `Control+A`	`page.get_by_label('Password').press('Enter')`
+Select dropdown option	yes	label or value	`page.get_by_label('Language').select_option('中文')`
+Check / Uncheck	yes	—	`page.get_by_label('Email notifications').check()`
+Assert element visible / hidden	yes	—	`expect(page.get_by_role('heading', name='Welcome')).to_be_visible()`
+Assert element contains text	yes	expected text	`expect(page.get_by_role('alert')).to_contain_text('Invalid')`
+Assert URL / title contains	—	expected text	`expect(page).to_have_url(re.compile(re.escape('/dashboard')))`
+Choosing an element. Prefer role + accessible name (e.g. role `button`, name
+`Log in`): it is how users and screen readers see the page, and it survives most
+layout changes. Use CSS selectors only as a last resort. To find a locator quickly, run
+`playwright codegen http://localhost:5000/demo/`, click the element with the
+Pick locator tool, and copy the role and name it suggests.
+Save, then Run test. The run appears in the history and updates live.
+Read the result. Every step shows passed / failed / not run with its duration. A
+failed step shows the error and a screenshot. Open the trace at
+https://trace.playwright.dev (drag the file in) or with `playwright show-trace trace.zip`
+to step through the DOM, network and console at every moment of the run.
+Export for CI writes the case to `test_cases/<name>.json`. Commit and push it to have
+GitHub Actions run it.
+Passed run	Failed run with screenshot
+![Passed run](docs/images/run_passed.png)	![Failed run](docs/images/run_failed.png)
+![Generated script preview](docs/images/generated_script.png)
+9. CI/CD workflow
+`.github/workflows/ci.yml` has two jobs.
+1. Platform unit tests: `pytest tests` (validation, generator, injection cases, API, runner).
+2. UI tests, run after the unit tests pass:
+build the `ui-test-runner` image from the same Dockerfile used locally;
+start the bundled demo app, unless a `base_url` was given;
+run every file in `test_cases/` inside the container (`python -m backend.cli run test_cases --source ci`);
+upload artifacts and a `run.json` manifest per run to Aliyun OSS when OSS secrets are
+configured; always also keep them as workflow artifacts for 14 days;
+fail the workflow if any UI test fails.
+Triggers.
+Trigger	Why
+`push` to `main`, `pull_request`	A change to the platform or to `test_cases/` is verified.
+`schedule` (02:00 China time)	Nightly regression, independent of code changes.
+`workflow_dispatch` with `base_url`	Run the suite on demand against any deployed environment.
+`repository_dispatch` type `app-deployed`	The application under test's own pipeline triggers the suite after each deployment.
+To trigger it after a deployment, the application's pipeline sends:
+```bash
+curl -X POST -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://api.github.com/repos/<owner>/<repo>/dispatches \
+  -d '{"event_type":"app-deployed","client_payload":{"base_url":"https://staging.example.com"}}'
+```
+Getting CI results into the platform. The GitHub runner cannot reach the platform's
+SQLite database, so results travel through storage instead. CI writes `runs/<id>/run.json`
+next to the artifacts in OSS. Sync CI runs in the UI (or `python -m backend.cli sync-ci`)
+reads new manifests and adds them to the history, linked by test-case name and marked CI,
+with the commit and a link to the Actions run. For this to work, the platform itself must
+use `STORAGE_BACKEND=oss` with the same bucket and prefix as CI.
+Required secrets: `OSS_ACCESS_KEY_ID`, `OSS_ACCESS_KEY_SECRET`, `OSS_ENDPOINT`,
+`OSS_BUCKET_NAME`; optionally `DEMO_USERNAME` / `DEMO_PASSWORD`. Without OSS secrets (e.g. on
+forks) the workflow still runs and keeps results as workflow artifacts.
+10. Security model
+Generating code from user input and executing it is the platform's main risk. It is
+handled in layers:
+Validation (`validation.py`): only known actions, locator strategies and ARIA roles;
+names restricted to letters, digits and `. _ - ( )`; length limits; no control characters;
+key names checked; URLs must be `http(s)` or a path.
+No user text as code: every user value enters the script through `repr()`, as a Python
+string literal. Metadata such as the test name goes into constants, never into comments
+or docstrings.
+Allow-list check: the generated source is parsed with `ast`. Inside the test
+function only known Playwright calls are allowed, and imports, nested functions and
+classes are rejected. A generator bug that let code through is caught before the file is
+written or run.
+Secret isolation: tests only see the `${VARIABLES}` they reference. Platform
+credentials (`OSS_*`, `API_TOKEN`, `SECRET_KEY`, `GITHUB_*`, …) are reserved and cannot be
+referenced, so a test cannot type them into a website.
+Container isolation: Docker runs are non-root, with all Linux capabilities dropped,
+`no-new-privileges`, a read-only root filesystem, memory/CPU/process limits and a timeout.
+Access: the server listens on `127.0.0.1` by default; `API_TOKEN` protects all changes
+when it is exposed. Artifact paths are checked against path traversal; the frontend
+inserts all user text as text, never as HTML.
+The test suite includes 18 injection cases (6 payloads × 3 input positions) and a tampered
+source check. This is a design-level defence, not a penetration-tested security
+guarantee (see Limitations).
+11. Testing the platform itself
+```bash
+pytest            # 84 tests in about 10 s
+```
+File	Covers
+`tests/test_validation.py`	Schema rules, bad names, reserved variables.
+`tests/test_script_generator.py`	Code for every action, golden-file comparison, injection payloads, AST check.
+`tests/test_api.py`	CRUD, validation errors, background runs, export, API token, path traversal, CI sync.
+`tests/test_runner.py`	Docker hardening flags, secrets not on the command line, missing variables.
+`tests/test_end_to_end.py`	All sample cases in a real browser against the demo app; a failing case produces a screenshot and trace. Skipped if no browser is installed.
+The golden file `tests/golden/login_success.py.golden` pins the generator's output, so
+any change to the generated code shows up as a reviewable diff.
+12. Evaluation
+`evaluation/` contains everything needed for the evaluation chapter. See
+`evaluation/README.md` for the full protocol.
+RQ1 expressiveness: coverage matrix over the demo app and two public practice sites.
+RQ2 reliability / RQ3 efficiency: `python -m evaluation.benchmark test_cases/ --repeat 30`
+records pass rate, flaky cases, generation time, run time and platform overhead (local vs Docker).
+RQ4 usability: a user study protocol (tasks, counterbalanced comparison, SUS questionnaire).
+RQ5 safety: the injection test suite.
+13. Limitations
+This is an undergraduate thesis prototype. Known limitations:
+Action coverage: no file upload, drag and drop, hover, iframes, multiple tabs or
+JavaScript dialogs.
+Linear tests only: no conditional steps, loops or data-driven parameters (variables
+cover secrets and environments, not test data tables).
+Manual locators: no built-in visual element picker; `playwright codegen` is the
+suggested helper.
+One-way generation: if an engineer edits a generated script, the change does not flow
+back into the form, and regenerating overwrites it.
+Simple access control: one shared token, no user accounts or roles.
+Security not externally tested: the layered defence is designed and unit-tested, not
+audited or penetration-tested.
+CI sync is pull-based: CI results appear after Sync CI runs, not instantly.
+SQLite and one process: suited to a team-sized prototype, not many concurrent users.
+14. Future work
+More actions: file upload, hover, drag and drop, iframes, tabs, dialogs.
+Visual element picker embedded in the editor.
+Data-driven and conditional testing: parameter tables and optional steps.
+Two-way sync: import hand-edited scripts back into the form where possible.
+Suites and scheduling inside the platform, not only in CI.
+User accounts and roles (tester / SDET / admin).
+Trend analytics: pass rate and flakiness over time per test case.
+Push-based CI results: CI calls the platform's API when it is reachable.
+15. Academic context
 > **Title:** Design and Implementation of a Low-Code Web UI Automation Testing Platform Based on Playwright
 > **Institution:** Wuhan University of Technology
 > **Degree:** Bachelor of Engineering, Computer Science
-> **Nature of project:** Academic prototype / proof of concept, developed to fulfill bachelor's thesis requirements.
-
-The full thesis document — covering requirements analysis, system design, detailed implementation, and evaluation — is available in this repository under `/docs` (or upon request).
-
-> `[Insert link to full thesis PDF here]`
-
----
-
-## 14. License
-
-This project is released under the [MIT License](LICENSE).
-
-```
-MIT License — free to use, copy, modify, and distribute, with attribution,
-provided the original copyright and license notice is included.
-```
-
----
-
-**Author's note:** This project was built to explore how thoughtful, low-code tooling can lower the barrier between domain-knowledgeable QA testers and the automated tests that verify real product workflows — a problem I encountered conceptually while researching SDET/QA team structures for this thesis. Feedback, issues, and pull requests are welcome.
+> **Nature:** Academic prototype
+The full thesis is available on request.
+`docs/thesis-changes.md` summarises the design changes of this
+version and where they belong in the thesis.
+16. License
+Released under the MIT License.
