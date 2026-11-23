@@ -34,21 +34,24 @@ or a form submission is supposed to do. Turning that knowledge into automated UI
 normally needs programming skills, so test automation becomes a bottleneck owned by a
 small group of SDETs. Every scenario a tester finds has to be handed over, explained and
 re-implemented by someone else.
+
 This bachelor's thesis prototype lets a tester:
-define test steps in a web form (navigate, click, type, choose from dropdowns,
-tick checkboxes, press keys, and assert text, visibility, URL and title);
-have the backend generate a standard Playwright + pytest script, checked for safety
+-define test steps in a web form (navigate, click, type, choose from dropdowns,
+-tick checkboxes, press keys, and assert text, visibility, URL and title);
+-have the backend generate a standard Playwright + pytest script, checked for safety
 before it runs;
-run it in an isolated Docker container for reproducible results;
-see per-step results, a screenshot of the failing step and a Playwright trace
+-run it in an isolated Docker container for reproducible results;
+-see per-step results, a screenshot of the failing step and a Playwright trace
 that replays the whole run;
-export the test so GitHub Actions runs it on every push, every night, or after each
+-export the test so GitHub Actions runs it on every push, every night, or after each
 deployment of the application under test, with results stored in Aliyun OSS and
 visible back in the platform.
+
 The goal is not to replace SDETs but to shift routine test authoring towards the people who
 know what to test, while the output stays plain pytest code an engineer can read, extend
 and own. The project is a functional prototype, not production software
 (see Limitations).
+
 2. Key features
 Feature	Description
 Form-based test editor	12 actions (go to URL, click, input text, press key, select option, check/uncheck, assert visible/hidden/text/URL/title), reorderable steps, live preview of the generated script.
@@ -64,6 +67,7 @@ CI integration	Test cases exported as JSON to `test_cases/` run in GitHub Action
 Cloud storage with private access	Reports, screenshots and traces go to Aliyun OSS; the platform hands out short-lived signed links, so the bucket stays private.
 CI results in the platform	Each run writes a `run.json` manifest; "Sync CI runs" imports CI results into the platform's history.
 Bundled demo application	A small demo shop at `/demo/` serves as the system under test, so tests and CI need no external website.
+
 3. System architecture
 ```
                  ┌──────────────────────────────┐
@@ -103,6 +107,7 @@ Test execution	`backend/services/test_runner.py`, `backend/runner_support/confte
 Background runs	`backend/services/run_service.py`	Thread pool, run status lifecycle (`queued → running → passed/failed/error`).
 Report storage	`backend/services/storage.py`	Local disk or Aliyun OSS, signed URLs, run manifests.
 CI integration	`.github/workflows/ci.yml`, `backend/cli.py`, `backend/services/ci_sync.py`	Runs exported cases in CI and imports the results.
+
 4. Tech stack
 Layer	Technology
 Backend	Python 3.11+, Flask 3
@@ -113,6 +118,7 @@ Script templating	Jinja2
 Containerization	Docker (`mcr.microsoft.com/playwright/python` base image)
 CI/CD	GitHub Actions
 Cloud storage	Aliyun OSS (`oss2` SDK)
+
 5. Project structure
 ```
 low-code-ui-testing-platform/
@@ -145,6 +151,7 @@ low-code-ui-testing-platform/
 └── LICENSE
 ```
 Created at run time (ignored by Git): `data/platform.db`, `runs/<run_id>/`, `evaluation/results/`.
+
 6. Quick start
 Prerequisites: Python 3.11+, Git, and Docker (for the default isolated executor).
 ```bash
@@ -177,6 +184,7 @@ EXECUTOR=local python -m backend.app
 Tests run as a pytest subprocess on your machine: no Docker needed, less isolation.
 Then open http://localhost:5000, select Login_Success_Test and click Run test.
 Run the platform's own tests with `pytest`.
+
 7. Configuration
 All settings are environment variables, read from `.env` if present. See `.env.example`.
 Variable	Default	Purpose
@@ -193,15 +201,12 @@ Variable	Default	Purpose
 `OSS_PREFIX`	`ui-tests/`	Folder inside the bucket.
 `OSS_URL_EXPIRY_SECONDS`	`3600`	Lifetime of signed links.
 `DEMO_USERNAME`, `DEMO_PASSWORD`	`demo`, `demo-pass`	Demo app credentials, also used as test variables.
-> ⚠️ **Never commit credentials.** `.env` is in `.gitignore`. In GitHub Actions, store OSS keys
-> and test passwords as encrypted repository secrets
-> (*Settings → Secrets and variables → Actions*).
-Aliyun OSS notes. Keep the bucket private: the platform signs a temporary link for
-each report or screenshot. A RAM user with permission only for this bucket
+A RAM user with permission only for this bucket
 (`oss:PutObject`, `oss:GetObject`, `oss:ListObjects`) is safer than the account's main key.
 OSS makes browsers download HTML files opened through its default domain rather than
 display them; to view reports in the browser, bind a custom domain to the bucket, or
 download the report and open it locally.
+
 8. Using the platform
 Create a test case: click + New test case, enter a name (e.g. `Login_Success_Test`)
 and the base URL of the application under test.
@@ -231,6 +236,7 @@ GitHub Actions run it.
 Passed run	Failed run with screenshot
 ![Passed run](docs/images/run_passed.png)	![Failed run](docs/images/run_failed.png)
 ![Generated script preview](docs/images/generated_script.png)
+
 9. CI/CD workflow
 `.github/workflows/ci.yml` has two jobs.
 1. Platform unit tests: `pytest tests` (validation, generator, injection cases, API, runner).
@@ -262,6 +268,7 @@ use `STORAGE_BACKEND=oss` with the same bucket and prefix as CI.
 Required secrets: `OSS_ACCESS_KEY_ID`, `OSS_ACCESS_KEY_SECRET`, `OSS_ENDPOINT`,
 `OSS_BUCKET_NAME`; optionally `DEMO_USERNAME` / `DEMO_PASSWORD`. Without OSS secrets (e.g. on
 forks) the workflow still runs and keeps results as workflow artifacts.
+
 10. Security model
 Generating code from user input and executing it is the platform's main risk. It is
 handled in layers:
@@ -286,6 +293,7 @@ inserts all user text as text, never as HTML.
 The test suite includes 18 injection cases (6 payloads × 3 input positions) and a tampered
 source check. This is a design-level defence, not a penetration-tested security
 guarantee (see Limitations).
+
 11. Testing the platform itself
 ```bash
 pytest            # 84 tests in about 10 s
@@ -298,6 +306,7 @@ File	Covers
 `tests/test_end_to_end.py`	All sample cases in a real browser against the demo app; a failing case produces a screenshot and trace. Skipped if no browser is installed.
 The golden file `tests/golden/login_success.py.golden` pins the generator's output, so
 any change to the generated code shows up as a reviewable diff.
+
 12. Evaluation
 `evaluation/` contains everything needed for the evaluation chapter. See
 `evaluation/README.md` for the full protocol.
@@ -306,6 +315,7 @@ RQ2 reliability / RQ3 efficiency: `python -m evaluation.benchmark test_cases/ --
 records pass rate, flaky cases, generation time, run time and platform overhead (local vs Docker).
 RQ4 usability: a user study protocol (tasks, counterbalanced comparison, SUS questionnaire).
 RQ5 safety: the injection test suite.
+
 13. Limitations
 This is an undergraduate thesis prototype. Known limitations:
 Action coverage: no file upload, drag and drop, hover, iframes, multiple tabs or
@@ -321,6 +331,7 @@ Security not externally tested: the layered defence is designed and unit-tested,
 audited or penetration-tested.
 CI sync is pull-based: CI results appear after Sync CI runs, not instantly.
 SQLite and one process: suited to a team-sized prototype, not many concurrent users.
+
 14. Future work
 More actions: file upload, hover, drag and drop, iframes, tabs, dialogs.
 Visual element picker embedded in the editor.
@@ -330,6 +341,7 @@ Suites and scheduling inside the platform, not only in CI.
 User accounts and roles (tester / SDET / admin).
 Trend analytics: pass rate and flakiness over time per test case.
 Push-based CI results: CI calls the platform's API when it is reachable.
+
 15. Academic context
 > **Title:** Design and Implementation of a Low-Code Web UI Automation Testing Platform Based on Playwright
 > **Institution:** Wuhan University of Technology
@@ -338,5 +350,6 @@ Push-based CI results: CI calls the platform's API when it is reachable.
 The full thesis is available on request.
 `docs/thesis-changes.md` summarises the design changes of this
 version and where they belong in the thesis.
+
 16. License
 Released under the MIT License.
